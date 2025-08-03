@@ -8,3 +8,7 @@ export interface JwtPayload {
     _id : string,
 }
 
+export interface LinkSchemaType {
+    userId: string;
+    hash: string;
+}

@@ -1,8 +1,8 @@
 import express, { Request, Response, Errback } from 'express';
-import { Content, Tag, User } from './schema';
-import jwt from 'jsonwebtoken';
+import { Content, Link, Tag, User } from './schema';
+import jwt, { JwtPayload } from 'jsonwebtoken';
 import constants from './config';
-import { myRequest } from './interfaces';
+import { LinkSchemaType, myRequest } from './interfaces';
 import { authenticate } from './middlewares';
 import cors from 'cors';
 import mongoose, { ObjectId } from 'mongoose';
@@ -53,6 +53,7 @@ app.post("/content", authenticate, async (req: myRequest, res: Response) => {
         }
         content.tag = tagArray;
         // console.log(content);
+        content.date = new Date();
         await Content.create(content);
         res.json({ "message": "Content Stored!" })
     }
@@ -68,6 +69,87 @@ app.get('/content', authenticate, async (req: myRequest, res: Response) => {
     // console.log(content);
     res.send(content);
 })
+
+app.delete('/content/:id', authenticate, async (req: myRequest, res: Response) => {
+    let id = req.params.id;
+    let userId = req._id;
+    // try{
+    //     let content = await Content.findOne({ _id: id, userId: userId });
+    //     if (!content) {
+    //         return res.status(404).json({ "message": "Content not found or you do not have permission to delete it." });
+    //     }
+    // }
+    // catch (e: any) {
+    //     return res.status(500).json({ "message": "Internal Server Error" });
+    // }
+
+    try {
+        let content = await Content.findOne({ _id: id, userId: userId });
+        console.log({ _id: id, userId: userId });
+        if (!content) {
+            res.status(404).json({ "message": "Content not found or you do not have permission to delete it." });
+            return;
+            // return res.status(404).json({ "message": "Content not found or you do not have permission to delete it." });
+        }
+        await Content.deleteOne({ _id : id });
+        res.json({ "message": "content deleted!" });
+    }
+    catch (e: any) {
+        res.status(401).send(e.message);
+        console.log(e.message);
+    }
+})
+
+
+app.post('/share', authenticate, async (req: myRequest, res: Response) => {
+    let id = req._id;
+    if (!id) {
+        res.status(401).json({ "message": "Unauthorized" });
+        return;
+    }
+    let link = await Link.findOne({ userId: id }) as LinkSchemaType | null;
+    let shareHash : string = "";
+    if(!link){
+        console.log("Creating new link for user:", id);
+        shareHash = jwt.sign({ _id: id }, constants.JWT_SECRET, { expiresIn: '1h' });
+        Link.create({ userId: id, hash: shareHash }).then(() => {
+            console.log("Link created successfully")
+        }).catch((err: Errback) => {
+            console.error("Error creating link:", err);
+        });
+    }
+    else{
+        console.log("Updating existing link for user:", id);
+        shareHash = jwt.sign({ _id: id }, constants.JWT_SECRET, { expiresIn: '1h' });
+        Link.updateOne({ userId: id }, { hash: shareHash }).then(() => {
+            console.log("Link updated successfully")
+        }).catch((err: Errback) => {
+            console.error("Error updating link:", err);
+        });
+    }
+    res.json({ "shareHash": shareHash });
+});
+
+app.get('/share/:hash', async (req: Request, res: Response) => {
+    let hash = req.params.hash;
+    let decodedObject;
+    try {
+        decodedObject = jwt.verify(hash, constants.JWT_SECRET) as JwtPayload;
+    } catch (e) {
+        res.status(401).json({ "message": "Invalid or expired share link" });
+        return;
+    }
+    // console.log(decodedObject);
+    
+    let userId = decodedObject._id;
+    let content = await Content.find({ userId }).populate('tag');
+    if (!content || content.length === 0) {
+        res.status(404).json({ "message": "No content found for this user" });
+        return;
+    }
+    
+    res.json(content);
+});
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
