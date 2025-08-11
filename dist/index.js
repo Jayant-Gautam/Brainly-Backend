@@ -141,7 +141,7 @@ app.get('/share/:hash', (req, res) => __awaiter(void 0, void 0, void 0, function
         res.status(401).json({ "message": "Invalid or expired share link" });
         return;
     }
-    console.log(decodedObject);
+    // console.log(decodedObject);
     let userId = decodedObject._id;
     let content = yield schema_1.Content.find({ userId }).populate('tag');
     if (!content || content.length === 0) {
