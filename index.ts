@@ -155,6 +155,11 @@ app.get('/share/:hash', async (req: Request, res: Response) => {
     
     res.json(content);
 });
+
+app.get('*', (req: Request, res: Response) => {
+    res.send('Hello, this is the SecondBrain backend!');
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
