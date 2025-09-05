@@ -1,11 +1,12 @@
 import express, { Request, Response, Errback } from 'express';
 import { Content, Link, Tag, User } from './schema';
 import jwt, { JwtPayload } from 'jsonwebtoken';
-import constants from './config';
 import { LinkSchemaType, myRequest } from './interfaces';
 import { authenticate } from './middlewares';
 import cors from 'cors';
 import mongoose, { ObjectId } from 'mongoose';
+import dotenv from "dotenv";
+dotenv.config();
 
 const app = express();
 const port = 3000;
@@ -15,16 +16,21 @@ app.use(express.json());
 
 app.post('/signup', async (req: Request, res: Response) => {
     let { username, password } = req.body;
-    await User.create({ username, password });
-    console.log(username, password);
-    res.json({ 'message': 'user registered' });
+    if(username && password){
+        let user = await User.create({ username, password });
+        // console.log(user);
+        res.json({ 'message': 'user registered' });
+    }
+    else{
+        res.status(400).json({ 'message': 'Username and password are required' });
+    }
 });
 
 app.post('/signin', async (req: Request, res: Response) => {
     let { username, password } = req.body;
     let user = await User.findOne({ username, password });
     if (user) {
-        let token = jwt.sign({ _id: user._id }, constants.JWT_SECRET);
+        let token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET as string);
         res.json({ "jsontoken": `${token}` });
     }
     else {
@@ -111,7 +117,7 @@ app.post('/share', authenticate, async (req: myRequest, res: Response) => {
     let shareHash : string = "";
     if(!link){
         console.log("Creating new link for user:", id);
-        shareHash = jwt.sign({ _id: id }, constants.JWT_SECRET, { expiresIn: '1h' });
+        shareHash = jwt.sign({ _id: id }, process.env.JWT_SECRET as string, { expiresIn: '1h' });
         Link.create({ userId: id, hash: shareHash }).then(() => {
             console.log("Link created successfully")
         }).catch((err: Errback) => {
@@ -120,7 +126,7 @@ app.post('/share', authenticate, async (req: myRequest, res: Response) => {
     }
     else{
         console.log("Updating existing link for user:", id);
-        shareHash = jwt.sign({ _id: id }, constants.JWT_SECRET, { expiresIn: '1h' });
+        shareHash = jwt.sign({ _id: id }, process.env.JWT_SECRET as string, { expiresIn: '1h' });
         Link.updateOne({ userId: id }, { hash: shareHash }).then(() => {
             console.log("Link updated successfully")
         }).catch((err: Errback) => {
@@ -134,7 +140,7 @@ app.get('/share/:hash', async (req: Request, res: Response) => {
     let hash = req.params.hash;
     let decodedObject;
     try {
-        decodedObject = jwt.verify(hash, constants.JWT_SECRET) as JwtPayload;
+        decodedObject = jwt.verify(hash, process.env.JWT_SECRET as string) as JwtPayload;
     } catch (e) {
         res.status(401).json({ "message": "Invalid or expired share link" });
         return;

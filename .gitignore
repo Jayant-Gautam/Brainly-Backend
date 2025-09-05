@@ -1,6 +1,3 @@
 node_modules/
-config.ts/
-index.ts/
-interfaces.ts/
-middlewares.ts/
-schema.ts/
+dist/
+.env

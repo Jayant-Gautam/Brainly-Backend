@@ -1,9 +1,10 @@
 import mongoose from 'mongoose';
 const Schema = mongoose.Schema;
 const model = mongoose.model;
-import constants from './config' 
+import dotenv from "dotenv";
+dotenv.config();
 
-mongoose.connect(constants.mongoURL)
+mongoose.connect(process.env.mongoURL as string)
   .then(() => console.log('Connected!'));
 
 const userSchema = new Schema({

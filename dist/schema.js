@@ -7,8 +7,9 @@ exports.Link = exports.Content = exports.Tag = exports.User = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const Schema = mongoose_1.default.Schema;
 const model = mongoose_1.default.model;
-const config_1 = __importDefault(require("./config"));
-mongoose_1.default.connect(config_1.default.mongoURL)
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
+mongoose_1.default.connect(process.env.mongoURL)
     .then(() => console.log('Connected!'));
 const userSchema = new Schema({
     username: {

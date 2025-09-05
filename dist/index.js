@@ -15,24 +15,30 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const schema_1 = require("./schema");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const config_1 = __importDefault(require("./config"));
 const middlewares_1 = require("./middlewares");
 const cors_1 = __importDefault(require("cors"));
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const app = (0, express_1.default)();
 const port = 3000;
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 app.post('/signup', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     let { username, password } = req.body;
-    yield schema_1.User.create({ username, password });
-    console.log(username, password);
-    res.json({ 'message': 'user registered' });
+    if (username && password) {
+        let user = yield schema_1.User.create({ username, password });
+        // console.log(user);
+        res.json({ 'message': 'user registered' });
+    }
+    else {
+        res.status(400).json({ 'message': 'Username and password are required' });
+    }
 }));
 app.post('/signin', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     let { username, password } = req.body;
     let user = yield schema_1.User.findOne({ username, password });
     if (user) {
-        let token = jsonwebtoken_1.default.sign({ _id: user._id }, config_1.default.JWT_SECRET);
+        let token = jsonwebtoken_1.default.sign({ _id: user._id }, process.env.JWT_SECRET);
         res.json({ "jsontoken": `${token}` });
     }
     else {
@@ -113,7 +119,7 @@ app.post('/share', middlewares_1.authenticate, (req, res) => __awaiter(void 0, v
     let shareHash = "";
     if (!link) {
         console.log("Creating new link for user:", id);
-        shareHash = jsonwebtoken_1.default.sign({ _id: id }, config_1.default.JWT_SECRET, { expiresIn: '1h' });
+        shareHash = jsonwebtoken_1.default.sign({ _id: id }, process.env.JWT_SECRET, { expiresIn: '1h' });
         schema_1.Link.create({ userId: id, hash: shareHash }).then(() => {
             console.log("Link created successfully");
         }).catch((err) => {
@@ -122,7 +128,7 @@ app.post('/share', middlewares_1.authenticate, (req, res) => __awaiter(void 0, v
     }
     else {
         console.log("Updating existing link for user:", id);
-        shareHash = jsonwebtoken_1.default.sign({ _id: id }, config_1.default.JWT_SECRET, { expiresIn: '1h' });
+        shareHash = jsonwebtoken_1.default.sign({ _id: id }, process.env.JWT_SECRET, { expiresIn: '1h' });
         schema_1.Link.updateOne({ userId: id }, { hash: shareHash }).then(() => {
             console.log("Link updated successfully");
         }).catch((err) => {
@@ -135,7 +141,7 @@ app.get('/share/:hash', (req, res) => __awaiter(void 0, void 0, void 0, function
     let hash = req.params.hash;
     let decodedObject;
     try {
-        decodedObject = jsonwebtoken_1.default.verify(hash, config_1.default.JWT_SECRET);
+        decodedObject = jsonwebtoken_1.default.verify(hash, process.env.JWT_SECRET);
     }
     catch (e) {
         res.status(401).json({ "message": "Invalid or expired share link" });
